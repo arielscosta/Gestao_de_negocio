@@ -1,74 +1,74 @@
-import os
-from database import inicializar_bd, conectar
-import estoque
-import vendas
+import database, estoque, clientes, os
 
-def exibir_menu_vendas():
-    while True:
-        print("\n--- PDV: LANÇAR VENDA ---")
-        conn = conectar()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, nome, preco_unitario, preco_caixa, estoque_qtd FROM produtos")
-        prods = cursor.fetchall()
-        conn.close()
+USUARIO_ATUAL = None
 
-        if not prods:
-            print("⚠️ Estoque vazio. Peça ao administrador para cadastrar produtos.")
-            break
-
-        for p in prods:
-            print(f"[{p['id']}] {p['nome']} | Un: R${p['preco_unitario']} | Cx: R${p['preco_caixa']} | Estoque: {p['estoque_qtd']}")
-
-        escolha = input("\nID do produto (ou 'S' para sair): ")
-        if escolha.upper() == 'S': break
-
+def login():
+    """Sistema de autenticação por camadas."""
+    global USUARIO_ATUAL
+    print("\n" + "="*40)
+    print("      ACESSO RESTRITO - GESTÃO ERP")
+    print("="*40)
+    user = input("Usuário: ")
+    senha = input("Senha: ")
+    
+    conn = database.conectar()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM usuarios WHERE username = ? AND password = ?", (user, senha))
+    u = cursor.fetchone()
+    conn.close() # Conexão fechada aqui - CORRETO
+    
+    if u:
+        USUARIO_ATUAL = u
         try:
-            p_id = int(escolha)
-            cliente = input("Nome do Cliente: ")
-            tipo = input("Tipo (U para Unitário / C para Caixa): ").upper()
-            qtd = int(input("Quantidade: "))
-            
-            # Busca preço correto
-            conn = conectar()
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM produtos WHERE id = ?", (p_id,))
-            prod = cursor.fetchone()
-            conn.close()
+            # Tentativa de log, se o banco estiver ocupado ele ignora e entra no sistema
+            database.registrar_log(u['id'], "Login realizado")
+        except:
+            pass 
+        return True
+    return False
 
-            if prod and qtd <= prod['estoque_qtd']:
-                preco = prod['preco_unitario'] if tipo == 'U' else prod['preco_caixa']
-                pag = float(input("Pagamento Inicial: "))
-                forma = input("Forma: ") if pag > 0 else ""
-                
-                itens = [{'produto': prod['nome'], 'qtd': qtd, 'valor_un': preco}]
-                vendas.salvar_pedido_completo(cliente, itens, pag, forma)
-            else:
-                print("❌ Produto não encontrado ou estoque insuficiente!")
-        except ValueError:
-            print("❌ Entrada inválida.")
-
-def main():
-    inicializar_bd()
+def menu_principal():
+    """Navegação baseada na hierarquia solicitada."""
     while True:
-        # os.system('cls' if os.name == 'nt' else 'clear')
-        print("\n===== GESTÃO DE NEGÓCIO 2.0 (MODULAR) =====")
-        print("1. Área de Vendas (Operacional)")
-        print("2. Visualizar Pedidos")
-        print("3. Gestão de Estoque (Administrativo)")
-        print("4. Sair")
+        print(f"\n--- MENU PRINCIPAL | OPERADOR: {USUARIO_ATUAL['username'].upper()} ---")
+        print("1- Novo Cliente")
+        print("2- Lista de Clientes")
+        print("3- Consultar Estoque")
+        print("4- Editar Estoque")
+        print("5- Sair")
         
         op = input("\nSelecione: ")
 
-        if op == '1':
-            exibir_menu_vendas()
-        elif op == '2':
-            vendas.listar_vendas()
+        if op == '1': # Menu Cliente
+            clientes.novo_cliente(USUARIO_ATUAL['id'])
+        
+        elif op == '2': # Submenu Lista Clientes
+            # Primeiro, mostra todo mundo
+            if clientes.listar_clientes():
+                print("\n1- Consultar detalhes de um ID")
+                print("2- Voltar")
+                if input("Escolha: ") == '1': 
+                    clientes.consultar_cliente_id(USUARIO_ATUAL['id'])
+            else:
+                input("\nPresione Enter para voltar...")
+            
+        elif op == '3': # Consulta Estoque
+            estoque.listar_tudo()
             input("\nEnter para voltar...")
-        elif op == '3':
-            # Chama a função do outro arquivo
-            estoque.adicionar_produto_estoque()
-        elif op == '4':
+            
+        elif op == '4': # Submenu Estoque
+            print("\n1- Novo/Editar Produto\n2- Registrar Saída de Produto\n3- Voltar")
+            sub = input("Escolha: ")
+            if sub == '1': estoque.gerenciar_produto(USUARIO_ATUAL['id'])
+            elif sub == '2': estoque.registrar_saida(USUARIO_ATUAL['id'])
+            
+        elif op == '5':
+            database.registrar_log(USUARIO_ATUAL['id'], "Logout do sistema")
             break
 
 if __name__ == "__main__":
-    main()
+    database.inicializar_bd()
+    if login():
+        menu_principal()
+    else:
+        print("❌ Acesso negado. Credenciais inválidas.")
