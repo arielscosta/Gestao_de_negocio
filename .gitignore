@@ -1,0 +1,28 @@
+# Banco de Dados (Segurança e Integridade)
+# Nunca suba o banco de dados real para evitar vazamento de dados
+gestao_de_negocio.db
+gestao_de_negocio.db-journal
+gestao_de_negocio.db-wal
+gestao_de_negocio.db-shm
+
+# Python (Arquivos temporários e compilados)
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+venv/
+ENV/
+
+# Docker
+.dockerignore
+
+# IDEs e Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema Operacional
+Thumbs.db
+desktop.ini
+.DS_Store
