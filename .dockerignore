@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+gestao_de_negocio.db
+.git/
