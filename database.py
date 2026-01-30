@@ -1,27 +1,28 @@
-import sqlite3
-import os
-from datetime import datetime
-
-# --- CONFIGURAÇÕES GERAIS ---
-DB_NAME = "gestao_de_negocio.db"
-
 # =================================================================
 #               CAMADA DE DADOS (SQLITE / DATABASE)
 # =================================================================
 
+import sqlite3
+import os
+from datetime import datetime
+
+DB_NAME = "gestao_de_negocio.db"
+
 def conectar():
-    """Retorna uma conexão com suporte a chaves estrangeiras ativo."""
+    """Conecta ao banco e ativa o suporte a chaves estrangeiras."""
     conn = sqlite3.connect(DB_NAME)
-    # Ativa o suporte a chaves estrangeiras (essencial para o ON DELETE CASCADE)
+    # Garante que as regras de relacionamento (CASCADE) funcionem
     conn.execute("PRAGMA foreign_keys = ON")
+    # Permite acessar colunas pelo nome (ex: linha['nome_cliente'])
+    conn.row_factory = sqlite3.Row 
     return conn
 
 def inicializar_bd():
-    """Cria as tabelas necessárias se não existirem."""
+    """Cria as tabelas com integridade referencial."""
     conn = conectar()
     cursor = conn.cursor()
 
-    # Tabela de Pedidos
+    # 1. Tabela de Pedidos
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS pedidos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,7 +33,7 @@ def inicializar_bd():
         )
     ''')
 
-    # Tabela de Itens do Pedido
+    # 2. Tabela de Itens (Ligada ao Pedido)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS itens_pedido (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,7 +46,7 @@ def inicializar_bd():
         )
     ''')
 
-    # Tabela de Pagamentos
+    # 3. Tabela de Pagamentos (Onde salvaremos o histórico de cada centavo)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS pagamentos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,7 +60,43 @@ def inicializar_bd():
 
     conn.commit()
     conn.close()
-    print("✅ Banco de Dados SQL inicializado e pronto.")
+    print("✅ Banco de Dados 'Gestao_de_negocio' configurado com sucesso.")
+
+# Executa a inicialização ao rodar o script
+if __name__ == "__main__":
+    if not os.path.exists(DB_NAME):
+        inicializar_bd()
+    else:
+        print("ℹ️ Banco de dados já existe. Pronto para operar.")
+
+
+# =================================================================
+#               Visualização de Dados (pedidos)
+# =================================================================
+
+def visualizar_todos_pedidos():
+    """Consulta o banco e exibe todos os pedidos cadastrados."""
+    conn = conectar()
+    cursor = conn.cursor()
+    
+    # Buscamos os pedidos (do mais novo para o mais antigo)
+    cursor.execute("SELECT * FROM pedidos ORDER BY id DESC")
+    pedidos = cursor.fetchall()
+    
+    if not pedidos:
+        print("\n📭 Nenhum pedido encontrado no sistema.")
+    else:
+        print("\n" + "="*70)
+        print(f"{'ID':<4} | {'CLIENTE':<20} | {'DATA':<18} | {'TOTAL (R$)':<10} | {'STATUS'}")
+        print("-" * 70)
+        
+        for p in pedidos:
+            # Como usamos sqlite3.Row, acessamos pelo nome da coluna:
+            print(f"{p['id']:<4} | {p['nome_cliente']:<20} | {p['data_pedido']:<18} | {p['valor_total']:<10.2f} | {p['status_logistico']}")
+        print("="*70)
+    
+    conn.close()
+    input("\nPressione Enter para voltar ao menu...")
 
 # =================================================================
 #               LÓGICA DE NEGÓCIO (TRANSAÇÕES)
@@ -113,28 +150,44 @@ def salvar_pedido_completo(nome_cliente, lista_itens, pagamento_inicial, forma_p
 #               INTERFACE TEMPORÁRIA (MENU)
 # =================================================================
 
-def menu():
-    inicializar_bd()
+def menu_principal():
+    inicializar_bd() # Garante que o banco e tabelas existam
+    
     while True:
+        os.system('cls' if os.name == 'nt' else 'clear') # Limpa a tela para ficar organizado
         print("\n=== GESTÃO DE NEGÓCIO (SQL) ===")
-        print("1. Novo Pedido")
-        print("2. Sair")
-        opcao = input("Escolha: ")
+        print("1. Lançar Novo Pedido")
+        print("2. Visualizar Todos os Pedidos")
+        print("3. Sair")
+        
+        opcao = input("\nEscolha uma opção: ")
 
         if opcao == '1':
-            nome = input("Cliente: ")
-            # Simulação de um item para teste rápido
-            prod = input("Produto: ")
-            q = int(input("Qtd: "))
-            v = float(input("Preço Un: "))
-            pag = float(input("Valor Pago Agora: "))
-            forma = input("Forma (Pix/Dinheiro): ")
+            print("\n--- LANÇAR NOVO PEDIDO ---")
+            nome = input("Nome do Cliente: ")
             
-            itens = [{'produto': prod, 'qtd': q, 'valor_un': v}]
-            salvar_pedido_completo(nome, itens, pag, forma)
-        
-        elif opcao == '2':
-            break
+            # Coleta de Itens (podemos futuramente fazer um loop para vários itens)
+            produto = input("Produto: ")
+            try:
+                qtd = int(input("Quantidade: "))
+                valor_un = float(input("Valor Unitário: "))
+                
+                # Coleta do Pagamento Inicial
+                pag_inicial = float(input("Valor do Pagamento Inicial (0 se não houver): "))
+                forma = ""
+                if pag_inicial > 0:
+                    forma = input("Forma de Pagamento (Pix/Dinheiro/Cartão): ")
+
+                # Prepara a lista de itens para a função
+                itens = [{'produto': produto, 'qtd': qtd, 'valor_un': valor_un}]
+
+                # Chama a transação SQL que você já escreveu
+                salvar_pedido_completo(nome, itens, pag_inicial, forma)
+                
+            except ValueError:
+                print("❌ Erro: Quantidade e Valor devem ser números!")
+            
+            input("\nPressione Enter para voltar ao menu...")
 
 if __name__ == "__main__":
-    menu()
+    menu_principal()
