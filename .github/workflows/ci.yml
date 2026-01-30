@@ -1,0 +1,31 @@
+# Nome que vai aparecer na aba 'Actions' do seu GitHub
+name: Docker CI Test
+
+# Define quando este robô deve começar a trabalhar
+on: 
+  push:
+    branches: [ main, master ] # Roda sempre que você enviar código para estas ramificações
+  pull_request:
+    branches: [ main, master ] # Roda quando alguém tentar sugerir mudanças (Pull Request)
+
+jobs:
+  # 'build-and-test' é o nome do nosso processo de verificação
+  build-and-test:
+    # Escolhemos uma máquina Linux "virgem" fornecida pelo GitHub
+    runs-on: ubuntu-latest 
+
+    steps:
+      # Passo 1: Copia o seu código do repositório para dentro da máquina virtual do GitHub
+      - name: Checkout do código
+        uses: actions/checkout@v3
+
+      # Passo 2: O GitHub Actions já vem com Docker. Vamos construir sua imagem.
+      # -t gestao-app: dá o nome 'gestao-app' para a imagem do seu projeto
+      - name: Construir Imagem Docker
+        run: docker build -t gestao-app .
+
+      # Passo 3: Rodar o teste que criamos dentro do ambiente isolado do Docker
+      # docker run --rm: cria o container, roda o comando e depois o deleta (limpeza)
+      # python test_db.py: executa o script de teste em vez do programa principal
+      - name: Rodar Teste de Integridade de Banco de Dados
+        run: docker run --rm gestao-app python test_db.py
