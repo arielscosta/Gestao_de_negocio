@@ -1,8 +1,13 @@
 from database import conectar, registrar_log
-import pedidos
+import pedidos, os
+
+def limpar_tela():
+    # Limpa o terminal: 'cls' para Windows, 'clear' para Linux/Docker
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 def novo_cliente(user_id):
     """Cadastra um novo cliente e já oferece a abertura de um pedido."""
+    limpar_tela() # Limpa a tela antes do cadastro
     print("\n--- CADASTRO DE NOVO CLIENTE ---")
     nome = input("Nome: ")
     tel = input("Telefone: ")
@@ -53,6 +58,7 @@ def consultar_cliente_id(user_id):
 
 def listar_clientes():
     """Lista todos os clientes antes da consulta."""
+    limpar_tela()
     conn = conectar()
     try:
         cursor = conn.cursor()

@@ -1,9 +1,14 @@
-import database, estoque, clientes, os
+import database, estoque, clientes, os  # Certifique-se de que 'os' está aqui
+
+def limpar_tela():
+    # 'nt' é Windows, 'posix' é Linux/Docker/WSL2
+    os.system('cls' if os.name == 'nt' else 'clear') # Função para limpar a tela do terminal
 
 USUARIO_ATUAL = None
 
 def login():
     """Sistema de autenticação por camadas."""
+    limpar_tela()
     global USUARIO_ATUAL
     print("\n" + "="*40)
     print("      ACESSO RESTRITO - GESTÃO ERP")
@@ -30,7 +35,8 @@ def login():
 def menu_principal():
     """Navegação baseada na hierarquia solicitada."""
     while True:
-        print(f"\n--- MENU PRINCIPAL | OPERADOR: {USUARIO_ATUAL['username'].upper()} ---")
+        limpar_tela() # Limpa a tela a cada iteração do menu
+        print(f"\n--- MENU PRINCIPAL | OPERADOR: {USUARIO_ATUAL['username'].upper()} ---") # Título do menu com o nome do usuário
         print("1- Novo Cliente")
         print("2- Lista de Clientes")
         print("3- Consultar Estoque")

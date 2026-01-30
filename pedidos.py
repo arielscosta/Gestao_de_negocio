@@ -1,12 +1,17 @@
 from database import conectar, registrar_log
 from datetime import datetime
-import estoque
+import estoque, os
+
+def limpar_tela():
+    # Limpa o terminal: 'cls' para Windows, 'clear' para Linux/Docker
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 def lancar_pedido(user_id, cliente_id):
     """Gerencia um carrinho de compras antes de salvar definitivamente no banco."""
     carrinho = []  # Lista temporária para armazenar os itens do pedido atual
     
     while True:
+        limpar_tela()
         print("\n" + "="*60)
         print(f"🛒 CARRINHO DE COMPRAS - CLIENTE ID: {cliente_id}")
         print("="*60)

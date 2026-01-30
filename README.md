@@ -1,4 +1,12 @@
-🚀 Projeto Gestão de Negócio: Engenharia de Prompt
+# 🚀 Projeto Gestão de Negócio: Engenharia de Prompt
+
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
+![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg?style=for-the-badge&logo=sqlite&logoColor=white)
+![WSL2](https://img.shields.io/badge/WSL2-0078D4?style=for-the-badge&logo=windows&logoColor=white)
+
+![Demonstração do Sistema](demo.gif)
+
 Sistema de gestão modular PDV (Ponto de Venda) iniciado para o estudo aprofundado de bancos de dados SQL Relacional com Python, evoluindo para uma estrutura robusta de DevOps e conteinerização.
 
 O projeto utiliza o Google Gemini como copiloto de engenharia para aplicar boas práticas de arquitetura e código limpo.
