@@ -1,5 +1,6 @@
 # 🚀 Projeto Gestão de Negócio: Engenharia de Prompt
 
+![CI Status](https://github.com/arielscosta/Gestao_de_negocio/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
 ![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
 ![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg?style=for-the-badge&logo=sqlite&logoColor=white)
