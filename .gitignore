@@ -4,6 +4,7 @@ gestao.db
 gestao.db-journal
 gestao.db-wal
 gestao.db-shm
+erp.db
 
 # Python (Arquivos temporários e compilados)
 __pycache__/
