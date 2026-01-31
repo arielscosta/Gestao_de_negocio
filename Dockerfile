@@ -8,9 +8,9 @@ WORKDIR /app
 # O primeiro '.' é a sua pasta local, o segundo '.' é a pasta /app no container
 COPY . .
 
-# 4. (Opcional) Se tivéssemos dependências externas, usaríamos:
-# RUN pip install -r requirements.txt
-# Como estamos usando apenas bibliotecas padrão (sqlite3, os, datetime), não precisamos.
+# 4. Instala dependências
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # 5. Comando que será executado quando o container subir
 CMD ["python", "main.py"]

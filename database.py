@@ -1,7 +1,7 @@
 import sqlite3
 from datetime import datetime
 
-DB_NAME = "gestao_de_negocio.db"
+DB_NAME = "gestao.db"
 
 def conectar():
     """

@@ -1,9 +1,9 @@
 # Banco de Dados (Segurança e Integridade)
 # Nunca suba o banco de dados real para evitar vazamento de dados
-gestao_de_negocio.db
-gestao_de_negocio.db-journal
-gestao_de_negocio.db-wal
-gestao_de_negocio.db-shm
+gestao.db
+gestao.db-journal
+gestao.db-wal
+gestao.db-shm
 
 # Python (Arquivos temporários e compilados)
 __pycache__/
@@ -21,6 +21,7 @@ ENV/
 .idea/
 *.swp
 *.swo
+ngrok.exe
 
 # Sistema Operacional
 Thumbs.db

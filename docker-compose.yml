@@ -1,10 +1,15 @@
 ﻿version: '3.8'
+
 services:
   app:
     build: .
     container_name: gestao-erp-container
+    # Mapeamento de Portas: [Porta do seu Windows] : [Porta dentro do Docker]
+    ports:
+      - "8000:8000"
     volumes:
       - .:/app
     stdin_open: true
     tty: true
-    restart: always
+    # O comando agora muda para iniciar a API em vez do script direto
+    command: uvicorn api:app --host 0.0.0.0 --port 8000 --reload
