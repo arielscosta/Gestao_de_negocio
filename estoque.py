@@ -1,48 +1,31 @@
 from database import conectar, registrar_log
 
 def gerenciar_produto(user_id):
-    """Cadastra ou edita produtos com proteção contra travamento de banco."""
     conn = conectar()
     try:
         cursor = conn.cursor()
+        identificador = input("\nID do produto (Vazio para NOVO): ")
         
-        identificador = input("\nID do produto (Deixe em branco para NOVO): ")
-        
-        if identificador:
-            cursor.execute("SELECT * FROM produtos WHERE id = ?", (identificador,))
-            prod_existente = cursor.fetchone()
-            if not prod_existente:
-                print("❌ ID não encontrado. Iniciando novo cadastro...")
-                identificador = None
-
         nome = input("Nome do Produto: ").upper()
-        qtd_un_cx = int(input("Qtd de unidades na caixa: "))
-        v_unidade = float(input("Valor unitário: R$ "))
-        
-        v_caixa = v_unidade * qtd_un_cx
-        qtd_estq = int(input("Quantidade total em estoque (unidades): "))
+        unid_por_cx = int(input("Unidades por caixa: "))
+        v_compra = float(input("Valor de Compra: R$ "))
+        v_venda = float(input("Valor de Venda: R$ "))
+        qtd_total = int(input("Quantidade Total em Estoque (Unidades): "))
 
         if identificador:
-            cursor.execute('''UPDATE produtos SET nome=?, estoque_qtd=?, preco_unitario=?, 
-                              qtd_por_caixa=?, preco_caixa=? WHERE id=?''', 
-                           (nome, qtd_estq, v_unidade, qtd_un_cx, v_caixa, identificador))
-            acao_log = f"Editou produto ID {identificador}: {nome}"
+            cursor.execute('''UPDATE produtos SET nome=?, unidades_por_caixa=?, valor_compra=?, 
+                              valor_venda=?, estoque_unidades_total=? WHERE id=?''', 
+                           (nome, unid_por_cx, v_compra, v_venda, qtd_total, identificador))
+            acao = f"Editou produto {nome}"
         else:
-            cursor.execute('''INSERT INTO produtos (nome, estoque_qtd, preco_unitario, qtd_por_caixa, preco_caixa)
-                              VALUES (?, ?, ?, ?, ?)''', (nome, qtd_estq, v_unidade, qtd_un_cx, v_caixa))
-            acao_log = f"Cadastrou novo produto: {nome}"
+            cursor.execute('''INSERT INTO produtos (nome, unidades_por_caixa, valor_compra, valor_venda, estoque_unidades_total)
+                              VALUES (?, ?, ?, ?, ?)''', (nome, unid_por_cx, v_compra, v_venda, qtd_total))
+            acao = f"Cadastrou produto {nome}"
 
         conn.commit()
-        # Registramos o log ainda dentro do bloco try
-        registrar_log(user_id, acao_log)
-        print(f"✅ Sucesso! Valor da caixa: R$ {v_caixa:.2f}")
-
-    except ValueError:
-        print("❌ Erro: Digite apenas números para quantidades e valores.")
-    except Exception as e:
-        print(f"❌ Erro operacional: {e}")
+        registrar_log(user_id, acao)
+        print("✅ Operação realizada com sucesso!")
     finally:
-        # ISSO É O MAIS IMPORTANTE: Fecha a conexão mesmo se der erro acima
         conn.close()
 
 def registrar_saida(user_id):
