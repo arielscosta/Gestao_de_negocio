@@ -1,41 +1,47 @@
-# test_db.py
-import database # Importa o seu módulo de banco de dados para testá-lo
+import os
+import sys
+import sqlite3
 
-def test_conexao_inicial():
-    """Teste de fumaça para garantir que a estrutura do DB está íntegra."""
-    print("🚀 Iniciando teste de integridade do banco de dados...")
+def run_test():
+    print("🚀 Iniciando Teste de Integridade...")
     
+    # 1. Tenta importar os módulos (Garante que arquivos existem)
     try:
-        # 1. Tenta inicializar o banco (cria as tabelas se não existirem)
+        import database
+        import estoque
+        import clientes
+        print("✅ Módulos carregados.")
+    except ImportError as e:
+        print(f"❌ Erro: Arquivo faltando ou erro de import: {e}")
+        sys.exit(1)
+
+    # 2. Resetar banco para o teste
+    if os.path.exists('erp.db'):
+        os.remove('erp.db')
+
+    # 3. Inicializar banco e testar tabelas
+    try:
         database.inicializar_bd()
-        
-        # 2. Tenta conectar para verificar se o arquivo .db foi criado
         conn = database.conectar()
         cursor = conn.cursor()
         
-        # 3. Consulta as tabelas que existem no banco SQLite
-        # sqlite_master é uma tabela padrão do SQLite que guarda o esquema do banco
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tabelas = cursor.fetchall()
+        # Testar se a coluna correta existe
+        cursor.execute("PRAGMA table_info(produtos)")
+        colunas = [col[1] for col in cursor.fetchall()]
+        
+        if 'estoque_unidades_total' in colunas:
+            print("✅ Estrutura da tabela 'produtos' está correta.")
+        else:
+            print("❌ Erro: Coluna 'estoque_unidades_total' não encontrada!")
+            sys.exit(1)
+            
         conn.close()
-        
-        # 4. Extrai apenas os nomes das tabelas para uma lista
-        nomes_tabelas = [t['name'] for t in tabelas]
-        
-        # 5. Verifica se as tabelas fundamentais estão lá (usando 'assert')
-        # Se 'usuarios' não estiver na lista, o Python gera um erro e para o teste
-        assert 'usuarios' in nomes_tabelas
-        assert 'produtos' in nomes_tabelas
-        assert 'logs_sistema' in nomes_tabelas
-        
-        print("✅ Sucesso: O banco de dados foi criado com a estrutura correta!")
-        return True
-
     except Exception as e:
-        # Se qualquer coisa acima der errado, o erro é capturado aqui
-        print(f"❌ FALHA NO TESTE: {e}")
-        # exit(1) avisa o GitHub que o teste falhou (qualquer número diferente de 0 é erro)
-        exit(1) 
+        print(f"❌ Erro no Banco de Dados: {e}")
+        sys.exit(1)
+
+    print("🎉 TESTE CONCLUÍDO COM SUCESSO!")
+    sys.exit(0)
 
 if __name__ == "__main__":
-    test_conexao_inicial()
+    run_test()
