@@ -37,7 +37,7 @@ def registrar_saida(user_id):
     try:
         qtd = int(input("Quantidade a retirar: "))
         cursor = conn.cursor()
-        cursor.execute("UPDATE produtos SET estoque_qtd = estoque_qtd - ? WHERE id = ?", (qtd, p_id))
+        cursor.execute("UPDATE produtos SET estoque_unidades_total = estoque_unidades_total - ? WHERE id = ?", (qtd, p_id))
         conn.commit()
         
         registrar_log(user_id, f"SAÍDA: {qtd} un do ID {p_id}. Motivo: {motivo}")
@@ -56,6 +56,6 @@ def listar_tudo():
         prods = cursor.fetchall()
         print(f"\n{'ID':<4} | {'PRODUTO':<20} | {'ESTOQUE':<8} | {'PREÇO UN':<10} | {'PREÇO CX'}")
         for p in prods:
-            print(f"{p['id']:<4} | {p['nome']:<20} | {p['estoque_qtd']:<8} | R${p['preco_unitario']:<8.2f} | R${p['preco_caixa']:.2f}")
+            print(f"{p['id']:<4} | {p['nome']:<20} | {p['estoque_unidades_total']:<8} | R${p['preco_unitario']:<8.2f} | R${p['preco_caixa']:.2f}")
     finally:
         conn.close()
