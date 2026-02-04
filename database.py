@@ -18,12 +18,11 @@ def registrar_log(usuario, acao):
     finally:
         conn.close()
 
-# No seu database.py
 def inicializar_bd():
     conn = conectar()
     cursor = conn.cursor()
     
-    # Criando a tabela de clientes com o campo status
+    # --- TABELA CLIENTES ---
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS clientes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,7 +36,7 @@ def inicializar_bd():
         )
     ''')
     
-    # Aproveite para garantir que a tabela de usuários também está ok
+    # --- TABELA USUÁRIOS ---
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,7 +50,7 @@ def inicializar_bd():
         )
     ''')
 
-    # Criando a tabela de pedidos
+    # --- TABELA PEDIDOS (Alinhada com api.py) ---
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS pedidos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,11 +58,54 @@ def inicializar_bd():
             valor_total REAL,
             data TEXT,
             status TEXT DEFAULT 'Aberto',
+            data_entrega TEXT,
+            hora_entrega TEXT,
+            metodo_pagamento TEXT,
             FOREIGN KEY (cliente_id) REFERENCES clientes (id)
         )
     ''')
 
-    # Criando a tabela de pagamentos
+    # --- TABELA ITENS_PEDIDO ---
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS itens_pedido (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pedido_id INTEGER,
+            produto_id INTEGER,
+            quantidade INTEGER,
+            tipo TEXT,
+            subtotal REAL,
+            FOREIGN KEY (pedido_id) REFERENCES pedidos (id),
+            FOREIGN KEY (produto_id) REFERENCES produtos (id)
+        )
+    ''')
+
+    # --- TABELA PRODUTOS ---
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS produtos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL,
+            status TEXT DEFAULT 'ativo',
+            unidades_por_caixa INTEGER DEFAULT 1,
+            estoque_unidades_total INTEGER DEFAULT 0,
+            valor_compra REAL DEFAULT 0.0,
+            valor_venda REAL DEFAULT 0.0
+        )
+    ''')
+
+    # --- TABELA MOVIMENTAÇÕES ---
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS movimentacoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            data_hora TEXT, 
+            produto TEXT, 
+            tipo TEXT,
+            quantidade_unid INTEGER, 
+            usuario TEXT, 
+            motivo TEXT
+        )
+    ''')
+
+    # --- TABELA PAGAMENTOS ---
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS pagamentos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,46 +117,6 @@ def inicializar_bd():
             FOREIGN KEY (cliente_id) REFERENCES clientes (id)
         )
     ''')
-
-    # Criando a tabela de itens do pedido
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS itens_pedido (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        pedido_id INTEGER,
-        produto_id INTEGER,
-        quantidade INTEGER,
-        tipo TEXT, -- 'unidade' ou 'caixa'
-        subtotal REAL,
-        FOREIGN KEY (pedido_id) REFERENCES pedidos (id)
-        )
-    ''')
-    
-          # Bloco de segurança: Garante que as novas colunas existam caso o banco já tenha sido criado antes
-    try:
-        cursor.execute("ALTER TABLE usuarios ADD COLUMN matricula TEXT UNIQUE")
-        cursor.execute("ALTER TABLE usuarios ADD COLUMN nome_completo TEXT")
-        cursor.execute("ALTER TABLE usuarios ADD COLUMN cpf TEXT")
-        cursor.execute("ALTER TABLE usuarios ADD COLUMN celular TEXT")
-        conn.commit()
-    except:
-        # Se as colunas já existirem, o SQLite dará erro e o código apenas ignora e segue adiante
-        pass
-
-    # --- TABELA PRODUTOS (Padronizada) ---
-    cursor.execute('''CREATE TABLE IF NOT EXISTS produtos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome TEXT NOT NULL,
-        status TEXT DEFAULT 'ativo',
-        unidades_por_caixa INTEGER DEFAULT 1,
-        estoque_unidades_total INTEGER DEFAULT 0,
-        valor_compra REAL DEFAULT 0.0,
-        valor_venda REAL DEFAULT 0.0)''')
-
-    # --- TABELA MOVIMENTAÇÕES ---
-    cursor.execute('''CREATE TABLE IF NOT EXISTS movimentacoes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        data_hora TEXT, produto TEXT, tipo TEXT,
-        quantidade_unid INTEGER, usuario TEXT, motivo TEXT)''')
 
     # Admin padrão
     cursor.execute("SELECT * FROM usuarios WHERE username = 'admin'")

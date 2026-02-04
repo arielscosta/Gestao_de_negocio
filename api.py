@@ -1088,15 +1088,13 @@ def gerar_comprovante(pedido_id: int):
     """, (pedido_id,))
     itens = cursor.fetchall()
     
-    # IMPORTANTE: Fecha a conexão aqui, após todas as consultas
-    conn.close()
-
-    # 3. Monta a lista de itens
+       # 3. Monta a lista de itens
     lista_html = "".join([
         f"<tr><td>{it['quantidade']} {it['tipo']}</td><td>{it['nome']}</td><td>R$ {it['subtotal']:.2f}</td></tr>" 
         for it in itens
     ])
-
+    # IMPORTANTE: Fecha a conexão aqui, após todas as consultas
+    conn.close()
     return f"""
     <html>
     <head>
