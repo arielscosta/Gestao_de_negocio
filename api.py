@@ -443,7 +443,7 @@ def finalizar_pedido(cliente_id: int = Form(...), carrinho_data: str = Form(...)
     
     # 1. Cria o Pedido
     cursor.execute("INSERT INTO pedidos (cliente_id, valor_total, data, status) VALUES (?,?,?,?)",
-                   (cliente_id, total_pedido, data_atual, 'Pendente'))
+                   (cliente_id, total_pedido, data_atual, 'Pendente')) # Novo pedido com status 'Pendente'
     pedido_id = cursor.lastrowid
 
     # 2. Salva os Itens e Baixa Estoque
@@ -461,7 +461,7 @@ def finalizar_pedido(cliente_id: int = Form(...), carrinho_data: str = Form(...)
                        (qtd_unidades, item['id']))
 
     conn.commit(); conn.close()
-    return RedirectResponse(f"/pedido/entrega/{cliente_id}", status_code=303)
+    return RedirectResponse(f"/pedido/entrega/{cliente_id}?pedido_id={pedido_id}", status_code=303)
 
                                                    # --- PAGAMENTOS ---
         
@@ -478,17 +478,21 @@ def pagar(id: int, v: float=Form(...)):
     return RedirectResponse(f"/clientes/detalhe/{id}", status_code=303)
 
 # --- ESTOQUE WEB ---
+import json # Não esqueça de importar o json no topo do api.py
+
 @app.get("/estoque_web", response_class=HTMLResponse)
 def estoque_web(request: Request, busca: str = ""):
     usuario_atual, cargo, nivel = get_user_info(request)
     if cargo not in ["Admin", "Gerente", "Estoquista"]: return RedirectResponse("/dashboard")
+    
     conn = database.conectar(); cursor = conn.cursor()
     
-    # Pegamos todos os dados para o JavaScript preencher os campos automaticamente
+    # 1. Pegamos todos os dados e convertemos para JSON seguro para o JS
     cursor.execute("SELECT nome, valor_compra, valor_venda, unidades_por_caixa FROM produtos WHERE status = 'ativo'")
     produtos_data = [dict(p) for p in cursor.fetchall()]
-    
-    # Filtro da tabela
+    produtos_json = json.dumps(produtos_data) # <--- CRUCIAL: Converte para formato JS
+
+    # 2. Filtro da tabela
     if busca:
         cursor.execute("SELECT * FROM produtos WHERE status = 'ativo' AND nome LIKE ?", (f"%{busca}%",))
     else:
@@ -498,17 +502,31 @@ def estoque_web(request: Request, busca: str = ""):
 
     sugestoes = "".join([f"<option value='{p['nome']}'>" for p in produtos_data])
     
-    # Tabela... (mesma lógica anterior)
     linhas = ""
     for p in prods:
-        total = p['estoque_unidades_total']; uc = p['unidades_por_caixa']
-        linhas += f"<tr><td>{p['nome']}</td><td>{total//uc} cx e {total%uc} un</td><td>R$ {p['valor_venda']:.2f}</td><td><a href='/estoque/editar/{p['id']}' class='btn btn-blue' style='padding:5px; font-size:12px;'>📝 Detalhes</a></td></tr>"
+        total = p['estoque_unidades_total']
+        uc = p['unidades_por_caixa'] or 1 # Evita divisão por zero
+        # Mostra o saldo de forma legível
+        saldo_formatado = f"{total//uc} cx e {total%uc} un" if uc > 1 else f"{total} un"
+        
+        # Na sua função estoque_web, dentro do loop for p in prods:
+        linhas += f"""
+        <tr>
+            <td>
+                <b>{p['nome']}</b> 
+                <br><small style='color: #7f8c8d;'>Embalagem: cx c/ {p['unidades_por_caixa']}</small>
+            </td>
+            <td>{total//uc} cx e {total%uc} un</td>
+            <td>R$ {p['valor_venda']:.2f}</td>
+            <td>...</td>
+        </tr>"""
 
     return f"""
     <html><head>
         {get_style()}
         <script>
-            const produtosExistentes = {produtos_data};
+            // Recebe o JSON do Python de forma segura
+            const produtosExistentes = {produtos_json};
             
             function preencherDados() {{
                 const nomeInput = document.getElementById('nome_prod').value;
@@ -529,7 +547,7 @@ def estoque_web(request: Request, busca: str = ""):
                 <h3>📦 Entrada de Mercadoria</h3>
                 <form action='/estoque/novo' method='post' style='display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;'>
                     <div style='grid-column: span 1;'>
-                        <input id='nome_prod' name='nome' list='datalist_prod' placeholder='Nome do Produto' oninput='preencherDados()' required>
+                        <input id='nome_prod' name='nome' list='datalist_prod' placeholder='Nome do Produto' oninput='preencherDados()' required autocomplete="off">
                         <datalist id='datalist_prod'>{sugestoes}</datalist>
                     </div>
                     <input type='number' step='0.01' id='v_compra' name='v_compra' placeholder='Custo Un' required>
@@ -540,11 +558,14 @@ def estoque_web(request: Request, busca: str = ""):
                         <option value='unid'>Unidades</option>
                         <option value='caixa'>Caixas</option>
                     </select>
-                    <button type='submit' class='btn btn-green' style='grid-column: span 3;'>Confirmar Entrada</button>
+                    <button type='submit' class='btn btn-green' style='grid-column: span 3; padding: 15px;'>Confirmar Entrada</button>
                 </form>
             </div>
             <div class='card'>
-                <table><tr><th>Produto</th><th>Saldo</th><th>Preço Un</th><th>Ações</th></tr>{linhas}</table>
+                <table>
+                    <thead><tr><th>Produto</th><th>Saldo Atual</th><th>Preço Venda</th><th>Ações</th></tr></thead>
+                    <tbody>{linhas}</tbody>
+                </table>
             </div>
         </div>
     </body></html>
@@ -965,7 +986,7 @@ def finalizar_pedido_inicial(request: Request, cliente_id: int = Form(...)):
 
 # --- TELA: AGENDAMENTO DE ENTREGA ---
 @app.get("/pedido/entrega/{cliente_id}", response_class=HTMLResponse)
-def tela_entrega(cliente_id: int, request: Request):
+def tela_entrega(cliente_id: int, pedido_id: int): # O pedido_id já chega aqui via URL
     return f"""
     <html>
     <head>{get_style()}</head>
@@ -975,8 +996,7 @@ def tela_entrega(cliente_id: int, request: Request):
                 <h2>🚚 Agendar Entrega</h2>
                 <form action='/pedido/pagamento' method='post'>
                     <input type='hidden' name='cliente_id' value='{cliente_id}'>
-                    
-                    <label>Data da Entrega:</label>
+                    <input type='hidden' name='pedido_id' value='{pedido_id}'> <label>Data da Entrega:</label>
                     <input type='date' name='data_entrega' required style='width:100%; margin-bottom:15px;'>
                     
                     <label>Horário Aproximado:</label>
@@ -992,7 +1012,7 @@ def tela_entrega(cliente_id: int, request: Request):
 
 # --- TELA: PAGAMENTO ---
 @app.get("/pedido/pagamento/{cliente_id}", response_class=HTMLResponse)
-def tela_pagamento(cliente_id: int, request: Request):
+def tela_pagamento(cliente_id: int, request: Request, pedido_id: int = None):
     return f"""
     <html>
     <head>{get_style()}</head>
@@ -1003,7 +1023,7 @@ def tela_pagamento(cliente_id: int, request: Request):
                 <p>Selecione como o cliente irá pagar:</p>
                 
                 <form action='/pedido/concluir' method='post'>
-                    <input type='hidden' name='cliente_id' value='{cliente_id}'>
+                    <input type='hidden' name='pedido_id' value='{pedido_id}'> <input type='hidden' name='cliente_id' value='{cliente_id}'>
                     
                     <div style='display: grid; gap: 10px; margin-top: 20px;'>
                         <label class='btn' style='background:#f1c40f; color:black;'>
@@ -1032,12 +1052,92 @@ def tela_pagamento(cliente_id: int, request: Request):
 
 # --- AÇÃO: CONCLUIR TUDO ---
 @app.post("/pedido/pagamento")
-def processar_entrega_para_pagamento(cliente_id: int = Form(...)):
-    # Esta rota apenas faz a ponte entre a tela de entrega e a de pagamento
-    return RedirectResponse(f"/pedido/pagamento/{cliente_id}", status_code=303)
-
+def processar_entrega_para_pagamento(cliente_id: int = Form(...), pedido_id: int = Form(...)):
+    # Agora redirecionamos passando o pedido_id na URL para a tela de escolha de pagamento
+    return RedirectResponse(f"/pedido/pagamento/{cliente_id}?pedido_id={pedido_id}", status_code=303)
+# --- AÇÃO: CONCLUIR PEDIDO E GERAR COMPROVANTE ---
 @app.post("/pedido/concluir")
-def concluir_pedido(cliente_id: int = Form(...), metodo: str = Form(...)):
-    # Aqui é onde o pedido seria salvo definitivamente no banco com o status 'Concluído'
-    # Por agora, vamos redirecionar para o detalhe do cliente com uma mensagem de sucesso
-    return RedirectResponse(f"/clientes/detalhe/{cliente_id}", status_code=303)
+def concluir_pedido(pedido_id: int = Form(...)): # Agora o pedido_id chega via formulário
+    # ... lógica de salvar data de entrega ...
+    return RedirectResponse(f"/pedido/comprovante/{pedido_id}", status_code=303)
+
+# --- GERAR COMPROVANTE DE PEDIDO EM HTML PARA IMPRESSÃO/PDF ---
+@app.get("/pedido/comprovante/{pedido_id}", response_class=HTMLResponse)
+def gerar_comprovante(pedido_id: int):
+    conn = database.conectar(); cursor = conn.cursor()
+    
+    # 1. Busca dados do Pedido e Cliente (incluindo o cliente_id para o link de voltar)
+    cursor.execute("""
+        SELECT p.id, p.cliente_id, p.data, p.valor_total, p.status, c.nome, c.endereco, c.telefone 
+        FROM pedidos p 
+        JOIN clientes c ON p.cliente_id = c.id 
+        WHERE p.id = ?
+    """, (pedido_id,))
+    pedido = cursor.fetchone()
+    
+    if not pedido: 
+        conn.close()
+        return "Pedido não encontrado."
+
+    # 2. Busca os itens desse pedido
+    cursor.execute("""
+        SELECT i.quantidade, i.tipo, i.subtotal, prod.nome 
+        FROM itens_pedido i
+        JOIN produtos prod ON i.produto_id = prod.id
+        WHERE i.pedido_id = ?
+    """, (pedido_id,))
+    itens = cursor.fetchall()
+    
+    # IMPORTANTE: Fecha a conexão aqui, após todas as consultas
+    conn.close()
+
+    # 3. Monta a lista de itens
+    lista_html = "".join([
+        f"<tr><td>{it['quantidade']} {it['tipo']}</td><td>{it['nome']}</td><td>R$ {it['subtotal']:.2f}</td></tr>" 
+        for it in itens
+    ])
+
+    return f"""
+    <html>
+    <head>
+        <style>
+            body {{ font-family: 'Courier New', Courier, monospace; width: 300px; margin: 20px auto; color: #000; }}
+            .header {{ text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; }}
+            table {{ width: 100%; font-size: 12px; margin-top: 10px; border-collapse: collapse; }}
+            th {{ text-align: left; }}
+            .total {{ border-top: 1px dashed #000; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 16px; text-align: right; }}
+            .footer {{ text-align: center; font-size: 10px; margin-top: 20px; }}
+            @media print {{ .no-print {{ display: none; }} }}
+        </style>
+    </head>
+    <body>
+        <div class='no-print' style='margin-bottom: 20px;'>
+            <button onclick='window.print()' style='width:100%; padding:10px; cursor:pointer;'>🖨️ Imprimir / Salvar PDF</button>
+            <br><br>
+            <a href='/clientes/detalhe/{pedido['cliente_id']}' style='display:block; text-align:center;'>⬅️ Voltar ao sistema</a>
+        </div>
+
+        <div class='header'>
+            <h2>RESUMO DO PEDIDO</h2>
+            <p>#{pedido['id']} - {pedido['data']}</p>
+        </div>
+
+        <div style='font-size: 12px; margin-top: 10px;'>
+            <b>Cliente:</b> {pedido['nome']}<br>
+            <b>Endereço:</b> {pedido['endereco'] or 'Não informado'}
+        </div>
+
+        <table>
+            <thead><tr><th>Qtd</th><th>Item</th><th>Sub</th></tr></thead>
+            <tbody>{lista_html}</tbody>
+        </table>
+
+        <div class='total'>TOTAL: R$ {pedido['valor_total']:.2f}</div>
+
+        <div class='footer'>
+            <p>Obrigado pela preferência!</p>
+            <p>Gerado em {datetime.now().strftime("%d/%m/%Y %H:%M")}</p>
+        </div>
+    </body>
+    </html>
+    """
