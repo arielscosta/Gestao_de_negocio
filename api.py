@@ -982,7 +982,7 @@ def tela_novo_pedido(cliente_id: int, request: Request):
 def finalizar_pedido_inicial(request: Request, cliente_id: int = Form(...)):
     # Aqui, no futuro, salvaremos os itens. 
     # Por enquanto, ele serve como gatilho para a próxima tela do seu fluxo.
-    return RedirectResponse(f"/pedido/entrega/{cliente_id}", status_code=303)
+    return RedirectResponse(f"/pedido/entrega/{cliente_id}?pedido_id=0", status_code=303)
 
 # --- TELA: AGENDAMENTO DE ENTREGA ---
 @app.get("/pedido/entrega/{cliente_id}", response_class=HTMLResponse)
